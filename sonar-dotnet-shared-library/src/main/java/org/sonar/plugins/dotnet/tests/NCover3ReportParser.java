@@ -119,7 +119,7 @@ public class NCover3ReportParser implements CoverageParser {
 
       if (documents.containsKey(doc) && !isExcludedLine(line)) {
         String path = documents.get(doc);
-        if (coverageFileValidator.isSupported(path)) {
+        if (coverageFileValidator.isSupportedAbsolute(path)) {
 
           LOG.trace("Found coverage for line '{}', vc '{}' when analyzing the doc '{}' with the path '{}'.",
             line, vc, doc, path);

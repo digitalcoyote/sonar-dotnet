@@ -46,9 +46,9 @@ public class DotCoverReportParserTest {
   @Before
   public void prepare() {
     alwaysTrue = mock(CoverageFileValidator.class);
-    when(alwaysTrue.isSupported(anyString())).thenReturn(true);
+    when(alwaysTrue.isSupportedAbsolute(anyString())).thenReturn(true);
     alwaysFalse = mock(CoverageFileValidator.class);
-    when(alwaysFalse.isSupported(anyString())).thenReturn(false);
+    when(alwaysFalse.isSupportedAbsolute(anyString())).thenReturn(false);
   }
 
   @Test

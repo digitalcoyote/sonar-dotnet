@@ -75,7 +75,7 @@ public class FileSystemCoverageFileValidatorParameterizedTest {
     FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
 
     // act & assert
-    assertThat(sut.isSupported("x")).isEqualTo(expectedResult);
+    assertThat(sut.isSupportedAbsolute("x")).isEqualTo(expectedResult);
     assertThat(logTester.logs(LoggerLevel.INFO)).containsExactly("In case deterministic source paths are used, '/_/' will be replaced '/TEST_ROOT/' ('sonar.projectBaseDir')");
   }
 

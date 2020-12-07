@@ -113,7 +113,7 @@ public class VisualStudioCoverageXmlReportParser implements CoverageParser {
         return;
       }
 
-      if (!coverageFileValidator.isSupported(canonicalPath)) {
+      if (!coverageFileValidator.isSupportedAbsolute(canonicalPath)) {
         LOG.debug("Skipping file with path '{}' because it is not indexed or does not have the supported language.", canonicalPath);
         return;
       }

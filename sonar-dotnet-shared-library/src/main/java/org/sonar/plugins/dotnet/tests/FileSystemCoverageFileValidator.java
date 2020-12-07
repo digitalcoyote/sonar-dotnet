@@ -27,43 +27,51 @@ import org.sonar.api.utils.log.Loggers;
 
 @ScannerSide
 public class FileSystemCoverageFileValidator implements CoverageFileValidator {
-  private static final String PROJECT_BASE_DIR = "sonar.projectBaseDir";
   private static final Logger LOG = Loggers.get(FileSystemCoverageFileValidator.class);
-  private String projectBaseDir;
   private FileSystem fileSystem;
   private String languageKey;
 
   public FileSystemCoverageFileValidator(Configuration configuration, String languageKey, FileSystem fileSystem) {
-    this.projectBaseDir = configuration.get(PROJECT_BASE_DIR).orElse(null);
     this.languageKey = languageKey;
     this.fileSystem = fileSystem;
-    if (projectBaseDir == null) {
-      LOG.warn("Could not retrieve analysis parameter '{}'", PROJECT_BASE_DIR);
-    } else {
-      LOG.info("In case deterministic source paths are used, '/_/' will be replaced '{}' ('{}')",
-        projectBaseDir, PROJECT_BASE_DIR);
-    }
   }
 
-  public boolean isSupported(String filePath) {
-    String absolutePath;
-    if (projectBaseDir != null && filePath.startsWith("/_/")) {
-      filePath = filePath.replaceFirst("/_/", "");
-      String separator;
-      if (projectBaseDir.contains("\\")) {
-        separator = "\\";
-        filePath = filePath.replace('/', '\\');
-      } else {
-        separator = "/";
-      }
-      absolutePath = projectBaseDir + separator + filePath;
-    } else {
-      absolutePath = filePath;
-    }
+  public boolean isSupportedAbsolute(String absolutePath) {
     return fileSystem.hasFiles(
       fileSystem.predicates().and(
         fileSystem.predicates().hasAbsolutePath(absolutePath),
         fileSystem.predicates().hasLanguage(languageKey)));
+  }
+
+  public boolean isSupportedRelative(String filePath) {
+    String absolutePath;
+    LOG.debug("Will verify if '{}' is supported", filePath);
+    if (isDeterministicSourcePath(filePath)) {
+      absolutePath = replaceDeterministicSourcePath(filePath);
+      LOG.debug("isDeterministicSourcePath true, replaced {} with {}", filePath, absolutePath);
+    } else {
+      absolutePath = filePath;
+      LOG.debug("isDeterministicSourcePath false, kept {}", filePath);
+    }
+    return fileSystem.hasFiles(
+      fileSystem.predicates().and(
+        fileSystem.predicates().hasRelativePath(absolutePath),
+        fileSystem.predicates().hasLanguage(languageKey)));
+  }
+
+  private boolean isDeterministicSourcePath(String filePath) {
+    // FIXME - I'd like to use File.separator, however it won't work with UTs (it is OS dependant)
+    return filePath.startsWith("/_/") || filePath.contains("C:\\_\\");
+  }
+
+  private String replaceDeterministicSourcePath(String filePath) {
+    if (filePath.startsWith("/_/")) {
+      filePath = filePath.replaceFirst("/_/", "");
+    } else {
+      // FIXME for `drive:\\_\\` , I should use a regular expression
+      filePath = filePath.replace("C:\\_\\", "");
+    }
+    return filePath;
   }
 
 }

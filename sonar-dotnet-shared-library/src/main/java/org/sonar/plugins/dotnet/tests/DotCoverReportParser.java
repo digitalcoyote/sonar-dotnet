@@ -69,7 +69,7 @@ public class DotCoverReportParser implements CoverageParser {
       }
 
       String fileCanonicalPath = extractFileCanonicalPath(contents);
-      if (fileCanonicalPath != null && coverageFileValidator.isSupported(fileCanonicalPath)) {
+      if (fileCanonicalPath != null && coverageFileValidator.isSupportedAbsolute(fileCanonicalPath)) {
         collectCoverage(fileCanonicalPath, contents);
       } else {
         LOG.debug("Skipping the import of dotCover code coverage for file '{}'"

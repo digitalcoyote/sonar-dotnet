@@ -19,7 +19,6 @@
  */
 package org.sonar.plugins.dotnet.tests;
 
-import java.util.Optional;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -28,7 +27,6 @@ import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.utils.log.LogTester;
-import org.sonar.api.utils.log.LoggerLevel;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -39,59 +37,37 @@ public class FileSystemCoverageFileValidatorTest {
   public LogTester logTester = new LogTester();
 
   @Test
+  // FIXME change name
   public void if_projectBaseDir_not_found_log_warn_do_not_replace() {
     FileSystem fs = mock(FileSystem.class);
     FilePredicates filePredicates = mock(FilePredicates.class);
 
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    when(filePredicates.hasAbsolutePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
+    when(filePredicates.hasRelativePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
     when(fs.predicates()).thenReturn(filePredicates);
 
     Configuration mockConfig = mock(Configuration.class);
-    when(mockConfig.get("sonar.projectBaseDir")).thenReturn(Optional.empty());
 
     FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
-    sut.isSupported("/_/some/path/file.cs");
+    sut.isSupportedRelative("/_/some/path/file.cs");
 
-    assertThat(logTester.logs(LoggerLevel.WARN)).containsExactly("Could not retrieve analysis parameter 'sonar.projectBaseDir'");
-    assertThat(argumentCaptor.getValue()).isEqualTo("/_/some/path/file.cs");
+    assertThat(argumentCaptor.getValue()).isEqualTo("some/path/file.cs");
   }
 
   @Test
-  public void if_projectBaseDir_returns_unix_path_replaces_base_dir() {
+  public void if_projectBaseDir_returns_windows_path_with_drive_replaces_base_dir_and_slash() {
     FileSystem fs = mock(FileSystem.class);
     FilePredicates filePredicates = mock(FilePredicates.class);
 
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    when(filePredicates.hasAbsolutePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
+    when(filePredicates.hasRelativePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
     when(fs.predicates()).thenReturn(filePredicates);
 
     Configuration mockConfig = mock(Configuration.class);
-    when(mockConfig.get("sonar.projectBaseDir")).thenReturn(Optional.of("/home/user/project"));
 
     FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
-    sut.isSupported("/_/some/path/file.cs");
+    sut.isSupportedRelative("C:\\_\\some\\path\\file.cs");
 
-    assertThat(logTester.logs(LoggerLevel.INFO)).containsExactly("In case deterministic source paths are used, '/_/' will be replaced '/home/user/project' ('sonar.projectBaseDir')");
-    assertThat(argumentCaptor.getValue()).isEqualTo("/home/user/project/some/path/file.cs");
-  }
-
-  @Test
-  public void if_projectBaseDir_returns_windows_path_replaces_base_dir_and_slash() {
-    FileSystem fs = mock(FileSystem.class);
-    FilePredicates filePredicates = mock(FilePredicates.class);
-
-    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    when(filePredicates.hasAbsolutePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
-    when(fs.predicates()).thenReturn(filePredicates);
-
-    Configuration mockConfig = mock(Configuration.class);
-    when(mockConfig.get("sonar.projectBaseDir")).thenReturn(Optional.of("C:\\Home\\User\\Project"));
-
-    FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
-    sut.isSupported("/_/some/path/file.cs");
-
-    assertThat(logTester.logs(LoggerLevel.INFO)).containsExactly("In case deterministic source paths are used, '/_/' will be replaced 'C:\\Home\\User\\Project' ('sonar.projectBaseDir')");
-    assertThat(argumentCaptor.getValue()).isEqualTo("C:\\Home\\User\\Project\\some\\path\\file.cs");
+    assertThat(argumentCaptor.getValue()).isEqualTo("some\\path\\file.cs");
   }
 }

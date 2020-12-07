@@ -19,8 +19,9 @@
  */
 package org.sonar.plugins.dotnet.tests;
 
-@FunctionalInterface
 public interface CoverageFileValidator {
 
-  boolean isSupported(String absolutePath);
+  boolean isSupportedAbsolute(String absolutePath);
+
+  boolean isSupportedRelative(String relativePath);
 }
