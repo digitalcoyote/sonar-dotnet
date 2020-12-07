@@ -141,7 +141,7 @@ public class CodeCoverageProvider {
       AnalysisWarnings analysisWarnings) {
       super(coverageConf,
             configuration,
-            new FileSystemCoverageFileValidator(coverageConf.languageKey(), fileSystem),
+            new FileSystemCoverageFileValidator(configuration, coverageConf.languageKey(), fileSystem),
             analysisWarnings);
     }
 
@@ -161,7 +161,7 @@ public class CodeCoverageProvider {
       AnalysisWarnings analysisWarnings) {
       super(itCoverageConf,
             configuration,
-            new FileSystemCoverageFileValidator(coverageConf.languageKey(), fileSystem),
+            new FileSystemCoverageFileValidator(configuration, coverageConf.languageKey(), fileSystem),
             analysisWarnings);
     }
 

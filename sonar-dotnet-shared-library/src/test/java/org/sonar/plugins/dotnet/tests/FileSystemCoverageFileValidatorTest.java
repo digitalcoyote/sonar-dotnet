@@ -19,84 +19,79 @@
  */
 package org.sonar.plugins.dotnet.tests;
 
-import java.util.Arrays;
-import java.util.Collection;
+import java.util.Optional;
+import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.mockito.ArgumentCaptor;
 import org.sonar.api.batch.fs.FilePredicate;
 import org.sonar.api.batch.fs.FilePredicates;
 import org.sonar.api.batch.fs.FileSystem;
-import org.sonar.api.batch.fs.InputFile;
+import org.sonar.api.config.Configuration;
+import org.sonar.api.utils.log.LogTester;
+import org.sonar.api.utils.log.LoggerLevel;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyCollection;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@RunWith(Parameterized.class)
 public class FileSystemCoverageFileValidatorTest {
-  private boolean hasAbsolutePath;
-  private boolean hasLanguage;
-  private boolean hasFiles;
-  private boolean expectedResult;
+  @Rule
+  public LogTester logTester = new LogTester();
 
-  public FileSystemCoverageFileValidatorTest(boolean hasAbsolutePath, boolean hasLanguage, boolean hasFiles, boolean expectedResult) {
-    this.hasAbsolutePath = hasAbsolutePath;
-    this.hasLanguage = hasLanguage;
-    this.hasFiles = hasFiles;
-    this.expectedResult = expectedResult;
-  }
+  @Test
+  public void if_projectBaseDir_not_found_log_warn_do_not_replace() {
+    FileSystem fs = mock(FileSystem.class);
+    FilePredicates filePredicates = mock(FilePredicates.class);
 
-  @Parameterized.Parameters
-  public static Collection input() {
-    return Arrays.asList(new Object[][] {
-        // hasAbsolutePath, hasLanguage, hasFiles, expectedResult
-        // expectedResult should always be what hasFiles returns
-        {false, false, false, false},
-        {true, false, false, false},
-        {false, true, false, false},
-        {true, true, false, false},
-        {false, false, true, true},
-        {false, true, true, true},
-        {true, false, true, true},
-        {true, true, true, true},
-      }
-    );
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    when(filePredicates.hasAbsolutePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
+    when(fs.predicates()).thenReturn(filePredicates);
+
+    Configuration mockConfig = mock(Configuration.class);
+    when(mockConfig.get("sonar.projectBaseDir")).thenReturn(Optional.empty());
+
+    FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
+    sut.isSupported("/_/some/path/file.cs");
+
+    assertThat(logTester.logs(LoggerLevel.WARN)).containsExactly("Could not retrieve analysis parameter 'sonar.projectBaseDir'");
+    assertThat(argumentCaptor.getValue()).isEqualTo("/_/some/path/file.cs");
   }
 
   @Test
-  public void isSupported_returns_hasFiles_result() {
-    // arrange
-    FilePredicates predicatesFilePredicate = mock(FilePredicates.class);
-
-    FilePredicate hasAbsolutePathFilePredicate = createFilePredicate(hasAbsolutePath);
-    when(predicatesFilePredicate.hasAbsolutePath(anyString())).thenReturn(hasAbsolutePathFilePredicate);
-
-    FilePredicate hasLanguageFilePredicate = createFilePredicate(hasLanguage);
-    when(predicatesFilePredicate.hasLanguage(anyString())).thenReturn(hasLanguageFilePredicate);
-
-    FilePredicate andFilePredicate = mock(FilePredicate.class);
-    when(predicatesFilePredicate.and(anyCollection())).thenReturn(andFilePredicate);
-
+  public void if_projectBaseDir_returns_unix_path_replaces_base_dir() {
     FileSystem fs = mock(FileSystem.class);
-    when(fs.predicates()).thenReturn(predicatesFilePredicate);
-    when(fs.hasFiles(any())).thenReturn(hasFiles);
+    FilePredicates filePredicates = mock(FilePredicates.class);
 
-    FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator("key", fs);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    when(filePredicates.hasAbsolutePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
+    when(fs.predicates()).thenReturn(filePredicates);
 
-    // act & assert
-    assertThat(sut.isSupported("x")).isEqualTo(expectedResult);
+    Configuration mockConfig = mock(Configuration.class);
+    when(mockConfig.get("sonar.projectBaseDir")).thenReturn(Optional.of("/home/user/project"));
+
+    FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
+    sut.isSupported("/_/some/path/file.cs");
+
+    assertThat(logTester.logs(LoggerLevel.INFO)).containsExactly("In case deterministic source paths are used, '/_/' will be replaced '/home/user/project' ('sonar.projectBaseDir')");
+    assertThat(argumentCaptor.getValue()).isEqualTo("/home/user/project/some/path/file.cs");
   }
 
-  private FilePredicate createFilePredicate(boolean result) {
-    return new FilePredicate() {
-      @Override
-      public boolean apply(InputFile inputFile) {
-        return result;
-      }
-    };
+  @Test
+  public void if_projectBaseDir_returns_windows_path_replaces_base_dir_and_slash() {
+    FileSystem fs = mock(FileSystem.class);
+    FilePredicates filePredicates = mock(FilePredicates.class);
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    when(filePredicates.hasAbsolutePath(argumentCaptor.capture())).thenReturn(mock(FilePredicate.class));
+    when(fs.predicates()).thenReturn(filePredicates);
+
+    Configuration mockConfig = mock(Configuration.class);
+    when(mockConfig.get("sonar.projectBaseDir")).thenReturn(Optional.of("C:\\Home\\User\\Project"));
+
+    FileSystemCoverageFileValidator sut = new FileSystemCoverageFileValidator(mockConfig,"key", fs);
+    sut.isSupported("/_/some/path/file.cs");
+
+    assertThat(logTester.logs(LoggerLevel.INFO)).containsExactly("In case deterministic source paths are used, '/_/' will be replaced 'C:\\Home\\User\\Project' ('sonar.projectBaseDir')");
+    assertThat(argumentCaptor.getValue()).isEqualTo("C:\\Home\\User\\Project\\some\\path\\file.cs");
   }
 }

@@ -20,19 +20,46 @@
 package org.sonar.plugins.dotnet.tests;
 
 import org.sonar.api.batch.fs.FileSystem;
+import org.sonar.api.config.Configuration;
 import org.sonar.api.scanner.ScannerSide;
+import org.sonar.api.utils.log.Logger;
+import org.sonar.api.utils.log.Loggers;
 
 @ScannerSide
 public class FileSystemCoverageFileValidator implements CoverageFileValidator {
+  private static final String PROJECT_BASE_DIR = "sonar.projectBaseDir";
+  private static final Logger LOG = Loggers.get(FileSystemCoverageFileValidator.class);
+  private String projectBaseDir;
   private FileSystem fileSystem;
   private String languageKey;
 
-  public FileSystemCoverageFileValidator(String languageKey, FileSystem fileSystem) {
+  public FileSystemCoverageFileValidator(Configuration configuration, String languageKey, FileSystem fileSystem) {
+    this.projectBaseDir = configuration.get(PROJECT_BASE_DIR).orElse(null);
     this.languageKey = languageKey;
     this.fileSystem = fileSystem;
+    if (projectBaseDir == null) {
+      LOG.warn("Could not retrieve analysis parameter '{}'", PROJECT_BASE_DIR);
+    } else {
+      LOG.info("In case deterministic source paths are used, '/_/' will be replaced '{}' ('{}')",
+        projectBaseDir, PROJECT_BASE_DIR);
+    }
   }
 
-  public boolean isSupported(String absolutePath) {
+  public boolean isSupported(String filePath) {
+    String absolutePath;
+    if (projectBaseDir != null && filePath.startsWith("/_/")) {
+      filePath = filePath.replaceFirst("/_/", "");
+      String separator;
+      if (projectBaseDir.contains("\\")) {
+        separator = "\\";
+        filePath = filePath.replace('/', '\\');
+      } else {
+        separator = "/";
+      }
+      absolutePath = projectBaseDir + separator + filePath;
+    } else {
+      absolutePath = filePath;
+    }
     return fileSystem.hasFiles(
       fileSystem.predicates().and(
         fileSystem.predicates().hasAbsolutePath(absolutePath),
