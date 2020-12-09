@@ -19,9 +19,13 @@
  */
 package org.sonar.plugins.dotnet.tests;
 
+import java.util.Optional;
+import org.sonar.api.batch.fs.InputFile;
+
 public interface CoverageFileValidator {
 
   boolean isSupportedAbsolute(String absolutePath);
 
-  boolean isSupportedRelative(String relativePath);
+  //Iterable<InputFile> getFilesByRelativePath(String relativePath);
+  Optional<InputFile> getFilesByRelativePath(String relativePath);
 }

@@ -19,7 +19,9 @@
  */
 package org.sonar.plugins.dotnet.tests;
 
+import java.util.Optional;
 import org.sonar.api.batch.fs.FileSystem;
+import org.sonar.api.batch.fs.InputFile;
 import org.sonar.api.config.Configuration;
 import org.sonar.api.scanner.ScannerSide;
 import org.sonar.api.utils.log.Logger;
@@ -43,7 +45,7 @@ public class FileSystemCoverageFileValidator implements CoverageFileValidator {
         fileSystem.predicates().hasLanguage(languageKey)));
   }
 
-  public boolean isSupportedRelative(String filePath) {
+  public Optional<InputFile> getFilesByRelativePath(String filePath) {
     String absolutePath;
     LOG.debug("Will verify if '{}' is supported", filePath);
     if (isDeterministicSourcePath(filePath)) {
@@ -53,10 +55,35 @@ public class FileSystemCoverageFileValidator implements CoverageFileValidator {
       absolutePath = filePath;
       LOG.debug("isDeterministicSourcePath false, kept {}", filePath);
     }
-    return fileSystem.hasFiles(
+
+    String replaceSeparator = absolutePath.replace('\\', '/');
+    boolean hasRelativePath = fileSystem.hasFiles(
       fileSystem.predicates().and(
-        fileSystem.predicates().hasRelativePath(absolutePath),
+        fileSystem.predicates().hasRelativePath(replaceSeparator),
         fileSystem.predicates().hasLanguage(languageKey)));
+    LOG.debug("hasRelative path ? {}" , hasRelativePath);
+    Iterable<InputFile> files = fileSystem.inputFiles(fileSystem.predicates().all());
+    int count = 0;
+    InputFile foundFile = null;
+    for (InputFile file : files) {
+      String path = file.uri().getPath();
+      LOG.debug("File {} can contain {} ? {} ", path, replaceSeparator, path.indexOf(replaceSeparator));
+      if (path.indexOf(replaceSeparator) != -1) {
+        count++;
+        foundFile = file;
+      }
+    }
+    if (count == 0) {
+      LOG.debug("The path '{}' is not indexed by the scanner as an absolute or relative path. This file will be skipped. Verify sonar.sources in .sonarqube\\out\\sonar-project.properties.", replaceSeparator);
+      return Optional.empty();
+    } else if (count > 1) {
+      LOG.debug("Found more than one indexed match for relative path '{}'. Will skip this coverage entry.", replaceSeparator);
+      return Optional.empty();
+    } else {
+      LOG.debug("Found indexed file '{}' for coverage entry '{}'", foundFile.uri().getPath(), replaceSeparator);
+    }
+    return Optional.of(foundFile);
+      //fileSystem.inputFiles()
   }
 
   private boolean isDeterministicSourcePath(String filePath) {
