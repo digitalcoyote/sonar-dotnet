@@ -62,7 +62,8 @@ namespace SonarAnalyzer.Rules.CSharp
 
             public override ProgramState PreProcessInstruction(ProgramPoint programPoint, ProgramState programState)
             {
-                var instruction = programPoint.Block.Instructions[programPoint.Offset];
+                var instruction = programPoint.CurrentInstruction;
+
                 switch (instruction.Kind())
                 {
                     case SyntaxKind.IdentifierName:
@@ -150,7 +151,7 @@ namespace SonarAnalyzer.Rules.CSharp
 
             private ProgramState ProcessIdentifier(ProgramPoint programPoint, ProgramState programState, IdentifierNameSyntax identifier)
             {
-                if (programPoint.Block.Instructions.Last() == identifier
+                if (programPoint.CurrentInstruction == identifier
                     && programPoint.Block.SuccessorBlocks.Count == 1
                     && (IsSuccessorForeachBranch(programPoint) || IsExceptionThrow(identifier)))
                 {
